@@ -118,8 +118,8 @@ func ListPackages(fileRoot, importRoot string) (PackageTree, error) {
 			return filepath.SkipDir
 		}
 
-		// Compute the import path. Run the result through ToSlash(), so that windows
-		// paths are normalized to Unix separators, as import paths are expected
+		// Compute the import path. Run the result through ToSlash(), so that
+		// windows paths are normalized to slashes, as import paths are expected
 		// to be.
 		ip := filepath.ToSlash(filepath.Join(importRoot, strings.TrimPrefix(wp, fileRoot)))
 
@@ -462,8 +462,7 @@ func (t PackageTree) ExternalReach(main, tests bool, ignore map[string]bool) Rea
 		workmap[ip] = w
 	}
 
-	//return wmToReach(workmap, t.ImportRoot)
-	return wmToReach(workmap, "") // TODO(sdboyer) this passes tests, but doesn't seem right
+	return wmToReach(workmap)
 }
 
 // wmToReach takes an internal "workmap" constructed by
@@ -472,11 +471,13 @@ func (t PackageTree) ExternalReach(main, tests bool, ignore map[string]bool) Rea
 // translates the results into a slice of external imports for each internal
 // pkg.
 //
+// It drops any packages with errors, and backpropagates those errors, causing
+// internal packages that (transitively) import other internal packages having
+// errors to also be dropped.
+//
 // The basedir string, with a trailing slash ensured, will be stripped from the
 // keys of the returned map.
-//
-// This is mostly separated out for testing purposes.
-func wmToReach(workmap map[string]wm, basedir string) map[string][]string {
+func wmToReach(workmap map[string]wm) map[string][]string {
 	// Uses depth-first exploration to compute reachability into external
 	// packages, dropping any internal packages on "poisoned paths" - a path
 	// containing a package with an error, or with a dep on an internal package
@@ -645,12 +646,11 @@ func wmToReach(workmap map[string]wm, basedir string) map[string][]string {
 	}
 
 	// Flatten allreachsets into the final reachlist
-	rt := strings.TrimSuffix(basedir, string(os.PathSeparator)) + string(os.PathSeparator)
 	rm := make(map[string][]string)
 	for pkg, rs := range allreachsets {
 		rlen := len(rs)
 		if rlen == 0 {
-			rm[strings.TrimPrefix(pkg, rt)] = nil
+			rm[pkg] = nil
 			continue
 		}
 
@@ -662,7 +662,7 @@ func wmToReach(workmap map[string]wm, basedir string) map[string][]string {
 		}
 
 		sort.Strings(edeps)
-		rm[strings.TrimPrefix(pkg, rt)] = edeps
+		rm[pkg] = edeps
 	}
 
 	return rm
