@@ -25,7 +25,7 @@ func TestWorkmapToReach(t *testing.T) {
 
 	table := map[string]struct {
 		workmap map[string]wm
-		out     map[string][]string
+		out     ReachMap
 	}{
 		"single": {
 			workmap: map[string]wm{
@@ -34,7 +34,7 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: map[string][]string{
+			out: ReachMap{
 				"foo": nil,
 			},
 		},
@@ -49,7 +49,7 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: map[string][]string{
+			out: ReachMap{
 				"foo":     nil,
 				"foo/bar": nil,
 			},
@@ -67,7 +67,7 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: map[string][]string{
+			out: ReachMap{
 				"foo":     nil,
 				"foo/bar": nil,
 			},
@@ -87,7 +87,7 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: map[string][]string{
+			out: ReachMap{
 				"foo": {
 					"baz",
 				},
@@ -114,7 +114,7 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: map[string][]string{
+			out: ReachMap{
 				"A/bar": {
 					"B/baz",
 				},
@@ -146,7 +146,7 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: map[string][]string{
+			out: ReachMap{
 				"A/quux": {
 					"B/baz",
 				},
@@ -173,7 +173,7 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: map[string][]string{
+			out: ReachMap{
 				"A/bar": {
 					"B/baz",
 				},
@@ -208,7 +208,7 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: map[string][]string{
+			out: ReachMap{
 				"A/quux": {
 					"B/baz",
 				},
@@ -217,9 +217,9 @@ func TestWorkmapToReach(t *testing.T) {
 	}
 
 	for name, fix := range table {
-		out := wmToReach(fix.workmap)
+		out, _ := wmToReach(fix.workmap)
 		if !reflect.DeepEqual(out, fix.out) {
-			t.Errorf("wmToReach(%q): Did not get expected reach map:\n\t(GOT): %s\n\t(WNT): %s", name, out, fix.out)
+			t.Errorf("wmToReach(%q): Did not get expected reach map:\n\t(GOT): %#v\n\t(WNT): %#v", name, out, fix.out)
 		}
 	}
 }
@@ -1039,7 +1039,8 @@ func TestListExternalImports(t *testing.T) {
 	var main, tests bool
 
 	validate := func() {
-		result := vptree.ExternalReach(main, tests, ignore).ListExternalImports()
+		exmap, _ := vptree.ExternalReach(main, tests, ignore)
+		result := exmap.ListExternalImports()
 		if !reflect.DeepEqual(expect, result) {
 			t.Errorf("Wrong imports in %q case:\n\t(GOT): %s\n\t(WNT): %s", name, result, expect)
 		}
@@ -1178,7 +1179,8 @@ func TestListExternalImports(t *testing.T) {
 		t.Fatalf("listPackages failed on disallow test case: %s", err)
 	}
 
-	result := ptree.ExternalReach(false, false, nil).ListExternalImports()
+	exmap, _ := ptree.ExternalReach(false, false, nil)
+	result := exmap.ListExternalImports()
 	expect = []string{"github.com/sdboyer/gps", "hash", "sort"}
 	if !reflect.DeepEqual(expect, result) {
 		t.Errorf("Wrong imports in %q case:\n\t(GOT): %s\n\t(WNT): %s", name, result, expect)
@@ -1199,7 +1201,7 @@ func TestExternalReach(t *testing.T) {
 	var ignore map[string]bool
 
 	validate := func() {
-		result := vptree.ExternalReach(main, tests, ignore)
+		result, _ := vptree.ExternalReach(main, tests, ignore)
 		if !reflect.DeepEqual(expect, result) {
 			seen := make(map[string]bool)
 			for ip, epkgs := range expect {
@@ -1390,9 +1392,9 @@ func TestExternalReachCycle(t *testing.T) {
 		t.Fatalf("ListPackages failed on cycle test case: %s", err)
 	}
 
-	rm := ptree.ExternalReach(true, true, nil)
+	rm, _ := ptree.ExternalReach(true, true, nil)
 
-	// TEMPORARILY COMMENTED UNTIL WE CREATE A BETTER LISTPACKAGES MODEL -
+	// FIXME TEMPORARILY COMMENTED UNTIL WE CREATE A BETTER LISTPACKAGES MODEL -
 	//if len(rm) > 0 {
 	//t.Errorf("should be empty reachmap when all packages are in a cycle, got %v", rm)
 	//}
