@@ -24,8 +24,8 @@ func TestWorkmapToReach(t *testing.T) {
 	}
 
 	table := map[string]struct {
-		workmap map[string]wm
-		out     ReachMap
+		workmap    map[string]wm
+		exrm, inrm ReachMap
 	}{
 		"single": {
 			workmap: map[string]wm{
@@ -34,7 +34,10 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: ReachMap{
+			exrm: ReachMap{
+				"foo": nil,
+			},
+			inrm: ReachMap{
 				"foo": nil,
 			},
 		},
@@ -49,7 +52,11 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: ReachMap{
+			exrm: ReachMap{
+				"foo":     nil,
+				"foo/bar": nil,
+			},
+			inrm: ReachMap{
 				"foo":     nil,
 				"foo/bar": nil,
 			},
@@ -67,8 +74,12 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: ReachMap{
+			exrm: ReachMap{
 				"foo":     nil,
+				"foo/bar": nil,
+			},
+			inrm: ReachMap{
+				"foo":     {"foo/bar"},
 				"foo/bar": nil,
 			},
 		},
@@ -87,13 +98,17 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: ReachMap{
+			exrm: ReachMap{
 				"foo": {
 					"baz",
 				},
 				"foo/bar": {
 					"baz",
 				},
+			},
+			inrm: ReachMap{
+				"foo":     {"foo/bar"},
+				"foo/bar": nil,
 			},
 		},
 		"missing package is poison": {
@@ -114,10 +129,13 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: ReachMap{
+			exrm: ReachMap{
 				"A/bar": {
 					"B/baz",
 				},
+			},
+			inrm: ReachMap{
+				"A/bar": nil,
 			},
 		},
 		"transitive missing package is poison": {
@@ -146,10 +164,13 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: ReachMap{
+			exrm: ReachMap{
 				"A/quux": {
 					"B/baz",
 				},
+			},
+			inrm: ReachMap{
+				"A/quux": nil,
 			},
 		},
 		"err'd package is poison": {
@@ -173,10 +194,13 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: ReachMap{
+			exrm: ReachMap{
 				"A/bar": {
 					"B/baz",
 				},
+			},
+			inrm: ReachMap{
+				"A/bar": nil,
 			},
 		},
 		"transitive err'd package is poison": {
@@ -208,18 +232,24 @@ func TestWorkmapToReach(t *testing.T) {
 					in: empty(),
 				},
 			},
-			out: ReachMap{
+			exrm: ReachMap{
 				"A/quux": {
 					"B/baz",
 				},
+			},
+			inrm: ReachMap{
+				"A/quux": nil,
 			},
 		},
 	}
 
 	for name, fix := range table {
-		out, _ := wmToReach(fix.workmap)
-		if !reflect.DeepEqual(out, fix.out) {
-			t.Errorf("wmToReach(%q): Did not get expected reach map:\n\t(GOT): %#v\n\t(WNT): %#v", name, out, fix.out)
+		exrm, inrm := wmToReach(fix.workmap)
+		if !reflect.DeepEqual(exrm, fix.exrm) {
+			t.Errorf("wmToReach(%q): Did not get expected external reach map:\n\t(GOT): %s\n\t(WNT): %s", name, exrm, fix.exrm)
+		}
+		if !reflect.DeepEqual(inrm, fix.inrm) {
+			t.Errorf("wmToReach(%q): Did not get expected internal reach map:\n\t(GOT): %s\n\t(WNT): %s", name, exrm, fix.exrm)
 		}
 	}
 }
