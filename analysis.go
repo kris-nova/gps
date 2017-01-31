@@ -431,9 +431,10 @@ func (t PackageTree) ToReachMaps(main, tests bool, ignore map[string]bool) (ex R
 		}
 
 		imps = imps[:0]
-		imps = p.Imports
 		if tests {
-			imps = dedupeStrings(imps, p.TestImports)
+			imps = dedupeStrings(p.Imports, p.TestImports)
+		} else {
+			imps = p.Imports
 		}
 
 		w := wm{
@@ -441,8 +442,9 @@ func (t PackageTree) ToReachMaps(main, tests bool, ignore map[string]bool) (ex R
 			in: make(map[string]bool),
 		}
 
+		// For each import, decide whether it should be ignored, or if it
+		// belongs in the external or internal imports list.
 		for _, imp := range imps {
-			// Skip ignored imports
 			if ignore[imp] {
 				continue
 			}
@@ -450,16 +452,7 @@ func (t PackageTree) ToReachMaps(main, tests bool, ignore map[string]bool) (ex R
 			if !eqOrSlashedPrefix(imp, t.ImportRoot) {
 				w.ex[imp] = true
 			} else {
-				if w2, seen := workmap[imp]; seen {
-					for i := range w2.ex {
-						w.ex[i] = true
-					}
-					for i := range w2.in {
-						w.in[i] = true
-					}
-				} else {
-					w.in[imp] = true
-				}
+				w.in[imp] = true
 			}
 		}
 
